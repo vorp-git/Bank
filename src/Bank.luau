@@ -3,13 +3,14 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
+const Vault = require(script.Parent.Vault)
 
 local Bank = {}
 Bank.__index = Bank
 
 export type JSONAcceptable = { JSONAcceptable } | { [string]: JSONAcceptable } | number | string | boolean | buffer
 
-export type Vault<T> = {
+export type Profile<T> = {
 	Data: T & JSONAcceptable,
 	LastSavedData: T & JSONAcceptable,
 	FirstSessionTime: number,
@@ -46,14 +47,14 @@ export type Vault<T> = {
 }
 
 export type VersionQuery<T> = {
-	NextAsync: (self: any) -> Vault<T>?,
+	NextAsync: (self: any) -> Profile<T>?,
 }
 
 type ProfileStoreStandard<T> = {
 	Name: string,
-	StartSessionAsync: (self: any, profile_key: string, params: { Steal: boolean? }) -> Vault<T>?,
+	StartSessionAsync: (self: any, profile_key: string, params: { Steal: boolean? }) -> Profile<T>?,
 	MessageAsync: (self: any, profile_key: string, message: JSONAcceptable) -> boolean,
-	GetAsync: (self: any, profile_key: string, version: string?) -> Vault<T>?,
+	GetAsync: (self: any, profile_key: string, version: string?) -> Profile<T>?,
 	VersionQuery: (
 		self: any,
 		profile_key: string,
@@ -68,24 +69,24 @@ export type ProfileStore<T> = {
 	Mock: ProfileStoreStandard<T>,
 } & ProfileStoreStandard<T>
 
-export type Config = {
-	template: { [string]: any },
+export type Config<T> = {
+	template: T,
 	useMock: boolean?,
 }
 
-export type Bank = typeof(setmetatable(
+export type Bank<T> = typeof(setmetatable(
 	{} :: {
 		_name: string,
-		_template: { [string]: any },
+		_template: T,
 		_useMock: boolean?,
 		_bank: ProfileStore<any>,
-		_vaults: { [Player]: Vault<any> },
+		_vaults: { [Player]: Vault.Vault },
 	},
 	Bank
 ))
 
-function Bank.new(name: string, config: Config): Bank
-	local self = setmetatable({}, Bank) :: Bank
+function Bank.new<T>(name: string, config: Config<T>): Bank<T>
+	local self = setmetatable({}, Bank) :: Bank<T>
 
 	self._name = name
 	self._template = config.template
@@ -94,7 +95,7 @@ function Bank.new(name: string, config: Config): Bank
 	self._vaults = {}
 
 	if self._useMock then
-		self._bank = self._bank.Mock :: ProfileStore<any>
+		self._bank = self._bank.Mock :: ProfileStore<T>
 	end
 
 	for _, player in Players:GetPlayers() do
@@ -114,37 +115,42 @@ function Bank.new(name: string, config: Config): Bank
 	return self
 end
 
-function Bank._loadVault(self: Bank, player: Player): ()
-	local vault = self._bank:StartSessionAsync(`{player.UserId}`, {
+function Bank._loadVault(self: Bank<any>, player: Player): ()
+	local profile = self._bank:StartSessionAsync(`{player.UserId}`, {
 		Cancel = function()
 			return player.Parent ~= Players
 		end,
 	})
 
-	if vault then
-		vault:AddUserId(player.UserId)
-		vault:Reconcile()
+	if profile then
+		profile:AddUserId(player.UserId)
+		profile:Reconcile()
 
-		vault.OnSessionEnd:Connect(function()
+		profile.OnSessionEnd:Connect(function()
 			self._vaults[player] = nil
 			player:Kick("Data session end - Please rejoin")
 		end)
 
 		if player.Parent == Players then
-			self._vaults[player] = vault
+			self._vaults[player] = Vault.new(profile)
 		else
-			vault:EndSession()
+			profile:EndSession()
 		end
 	else
 		player:Kick("Data load fail - Please rejoin")
 	end
 end
 
-function Bank._saveVault(self: Bank, player: Player): ()
+function Bank._saveVault(self: Bank<any>, player: Player): ()
 	local vault = self._vaults[player]
+
 	if vault then
-		vault:EndSession()
+		vault._profile:EndSession()
 	end
+end
+
+function Bank.GetVault<T>(self: Bank<T>, player: Player): Vault.Vault
+	return self._vaults[player]
 end
 
 return Bank
