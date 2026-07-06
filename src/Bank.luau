@@ -85,7 +85,11 @@ export type Bank<T> = typeof(setmetatable(
 	Bank
 ))
 
+local banks: { [string]: Bank<any> } = {}
+
 function Bank.new<T>(name: string, config: Config<T>): Bank<T>
+	assert(not banks[name], `Bank {name} already exists`)
+
 	local self = setmetatable({}, Bank) :: Bank<T>
 
 	self._name = name
@@ -97,6 +101,8 @@ function Bank.new<T>(name: string, config: Config<T>): Bank<T>
 	if self._useMock then
 		self._bank = self._bank.Mock :: ProfileStore<T>
 	end
+
+	banks[name] = self :: Bank<any>
 
 	for _, player in Players:GetPlayers() do
 		task.spawn(function()
@@ -151,6 +157,10 @@ end
 
 function Bank.getVault<T>(self: Bank<T>, player: Player): Vault.Vault
 	return self._vaults[player]
+end
+
+function Bank.getBank<T>(_self: Bank<any>, name: string): Bank<T>
+	return banks[name]
 end
 
 return Bank
