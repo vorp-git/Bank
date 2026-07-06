@@ -1,0 +1,14 @@
+[package]
+name = "vorp-git/bank"
+version = "0.4.0"
+description = "A Bank/Vault data management library built on ProfileStore"
+license = "MIT"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "server"
+exclude = ["**"]
+include = ["src", "src/*", "default.project.json", "wally.lock", "wally.toml", "LICENSE"]
+
+[dependencies]
+
+[server-dependencies]
+ProfileStore = "lm-loleris/profilestore@1.0.3"
