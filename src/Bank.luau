@@ -3,10 +3,28 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
+const Signal = require(script.Parent.Parent.Signal) :: any
 const Vault = require(script.Parent.Vault)
 
 local Bank = {}
 Bank.__index = Bank
+
+export type Connection = {
+	Disconnect: (self: Connection) -> (),
+	Destroy: (self: Connection) -> (),
+	Connected: boolean,
+}
+
+export type Signal<T...> = {
+	Fire: (self: Signal<T...>, T...) -> (),
+	FireDeferred: (self: Signal<T...>, T...) -> (),
+	Connect: (self: Signal<T...>, fn: (T...) -> ()) -> Connection,
+	Once: (self: Signal<T...>, fn: (T...) -> ()) -> Connection,
+	DisconnectAll: (self: Signal<T...>) -> (),
+	GetConnections: (self: Signal<T...>) -> { Connection },
+	Destroy: (self: Signal<T...>) -> (),
+	Wait: (self: Signal<T...>) -> T...,
+}
 
 export type JSONAcceptable = { JSONAcceptable } | { [string]: JSONAcceptable } | number | string | boolean | buffer
 
@@ -81,6 +99,8 @@ export type Bank<T> = typeof(setmetatable(
 		_useMock: boolean?,
 		_bank: ProfileStore<any>,
 		_vaults: { [Player]: Vault.Vault },
+
+		VaultLoaded: Signal<Player, Vault.Vault>,
 	},
 	Bank
 ))
@@ -97,6 +117,8 @@ function Bank.new<T>(name: string, config: Config<T>): Bank<T>
 	self._useMock = config.useMock or false
 	self._bank = ProfileStore.New(name, self._template)
 	self._vaults = {}
+
+	self.VaultLoaded = Signal.new()
 
 	if self._useMock then
 		self._bank = self._bank.Mock :: ProfileStore<T>
@@ -139,6 +161,7 @@ function Bank._loadVault(self: Bank<any>, player: Player): ()
 
 		if player.Parent == Players then
 			self._vaults[player] = Vault.new(profile)
+			self.VaultLoaded:Fire(player, self._vaults[player])
 		else
 			profile:EndSession()
 		end

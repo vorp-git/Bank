@@ -8,6 +8,11 @@ version = "1.0.3"
 dependencies = []
 
 [[package]]
+name = "sleitnick/signal"
+version = "2.0.3"
+dependencies = []
+
+[[package]]
 name = "vorp-git/bank"
 version = "0.4.0"
-dependencies = [["ProfileStore", "lm-loleris/profilestore@1.0.3"]]
+dependencies = [["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "lm-loleris/profilestore@1.0.3"]]
