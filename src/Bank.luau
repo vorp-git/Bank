@@ -149,7 +149,7 @@ function Bank._saveVault(self: Bank<any>, player: Player): ()
 	end
 end
 
-function Bank.GetVault<T>(self: Bank<T>, player: Player): Vault.Vault
+function Bank.getVault<T>(self: Bank<T>, player: Player): Vault.Vault
 	return self._vaults[player]
 end
 
