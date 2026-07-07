@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
-const Signal = require(script.Parent.Parent.Signal) :: any
+const Signal = require(script.Parent.Parent.Parent.Packages.Signal) :: any
 const Vault = require(script.Parent.Vault)
 
 local Bank = {}
@@ -106,6 +106,7 @@ export type Bank<T> = typeof(setmetatable(
 ))
 
 local banks: { [string]: Bank<any> } = {}
+local bankRegistered = Signal.new() :: Signal<string>
 
 function Bank.new<T>(name: string, config: Config<T>): Bank<T>
 	assert(not banks[name], `Bank {name} already exists`)
@@ -125,6 +126,7 @@ function Bank.new<T>(name: string, config: Config<T>): Bank<T>
 	end
 
 	banks[name] = self :: Bank<any>
+	bankRegistered:Fire(name)
 
 	for _, player in Players:GetPlayers() do
 		task.spawn(function()
@@ -182,8 +184,32 @@ function Bank.getVault<T>(self: Bank<T>, player: Player): Vault.Vault
 	return self._vaults[player]
 end
 
-function Bank.getBank<T>(_self: Bank<any>, name: string): Bank<T>
-	return banks[name]
+function Bank.getBank<T>(_self: Bank<any>, name: string): Bank<T>?
+	if banks[name] then
+		return banks[name]
+	end
+
+	local deadline = os.clock() + 10
+	local connection = nil
+	local result = nil :: Bank<any>?
+
+	connection = bankRegistered:Connect(function(bank: string)
+		if bank == name then
+			result = banks[name]
+		end
+	end)
+
+	while not result and os.clock() < deadline do
+		task.wait()
+	end
+
+	connection:Disconnect()
+
+	if not result then
+		warn(`Bank.getBank timed out waiting for Bank "{name}", make sure it was created and the name matches exactly.`)
+	end
+
+	return result
 end
 
 return Bank
