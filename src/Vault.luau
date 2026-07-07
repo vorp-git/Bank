@@ -41,4 +41,11 @@ function Vault.decrement(self: Vault, key: string, amount: number): ()
 	self:increment(key, -amount)
 end
 
+function Vault.update(self: Vault, key: string, callback: (...number) -> number): ()
+	local current = self._profile.Data[key]
+	if current ~= nil then
+		self._profile.Data[key] = callback(current)
+	end
+end
+
 return Vault
