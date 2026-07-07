@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.4.0"
+Bank = "vorp-git/bank@0.5.0"
 ```
 
 ## Quick Start
