@@ -47,10 +47,15 @@ end)
 ## Using A Vault
 
 ```lua
-vault:get("cash") -- returns cash
-vault:set("cash", 100) -- sets cash to 100
-vault:increment("cash", 10) -- adds 10 cash
-vault:decrement("cash", 10) -- removes 10 cash
+vault:get("cash")
+vault:set("cash", 100)
+
+vault:increment("cash", 10)
+vault:decrement("cash", 10)
+
+vault:update("cash", function(currentCash)
+    return currentCash + 100
+end)
 ```
 
 ## Scope
