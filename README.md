@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.5.1"
+Bank = "vorp-git/bank@0.5.2"
 ```
 
 ## Quick Start
@@ -45,6 +45,7 @@ end)
 ## Using A Vault
 
 ```lua
+vault:getData()
 vault:get("cash")
 vault:set("cash", 100)
 

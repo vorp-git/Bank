@@ -25,6 +25,10 @@ function Vault.get(self: Vault, key: string): any?
 	return self._profile.Data[key]
 end
 
+function Vault.getData(self: Vault): {}
+	return self._profile.Data
+end
+
 function Vault.set(self: Vault, key: string, value: any): ()
 	if self._profile.Data[key] then
 		self._profile.Data[key] = value
