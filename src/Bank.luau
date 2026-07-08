@@ -1,131 +1,51 @@
 --!strict
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+const Players = game:GetService("Players")
+const RunService = game:GetService("RunService")
 
 const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
 const Signal = require(script.Parent.Parent.Parent.Packages.Signal) :: any
 const Vault = require(script.Parent.Vault)
 
-local Bank = {}
+const Bank = {}
 Bank.__index = Bank
 
-export type Connection = {
-	Disconnect: (self: Connection) -> (),
-	Destroy: (self: Connection) -> (),
-	Connected: boolean,
-}
-
-export type Signal<T...> = {
-	Fire: (self: Signal<T...>, T...) -> (),
-	FireDeferred: (self: Signal<T...>, T...) -> (),
-	Connect: (self: Signal<T...>, fn: (T...) -> ()) -> Connection,
-	Once: (self: Signal<T...>, fn: (T...) -> ()) -> Connection,
-	DisconnectAll: (self: Signal<T...>) -> (),
-	GetConnections: (self: Signal<T...>) -> { Connection },
-	Destroy: (self: Signal<T...>) -> (),
-	Wait: (self: Signal<T...>) -> T...,
-}
-
-export type JSONAcceptable = { JSONAcceptable } | { [string]: JSONAcceptable } | number | string | boolean | buffer
-
-export type Profile<T> = {
-	Data: T & JSONAcceptable,
-	LastSavedData: T & JSONAcceptable,
-	FirstSessionTime: number,
-	SessionLoadCount: number,
-	Session: { PlaceId: number, JobId: string }?,
-	RobloxMetaData: JSONAcceptable,
-	UserIds: { number },
-	KeyInfo: DataStoreKeyInfo,
-	OnSave: { Connect: (self: any, listener: () -> ()) -> { Disconnect: (self: any) -> () } },
-	OnLastSave: {
-		Connect: (
-			self: any,
-			listener: (reason: "Manual" | "External" | "Shutdown") -> ()
-		) -> { Disconnect: (self: any) -> () },
-	},
-	OnSessionEnd: { Connect: (self: any, listener: () -> ()) -> { Disconnect: (self: any) -> () } },
-	OnAfterSave: {
-		Connect: (
-			self: any,
-			listener: (last_saved_data: T & JSONAcceptable) -> ()
-		) -> { Disconnect: (self: any) -> () },
-	},
-	ProfileStore: JSONAcceptable,
-	Key: string,
-
-	IsActive: (self: any) -> boolean,
-	Reconcile: (self: any) -> (),
-	EndSession: (self: any) -> (),
-	AddUserId: (self: any, user_id: number) -> (),
-	RemoveUserId: (self: any, user_id: number) -> (),
-	MessageHandler: (self: any, fn: (message: JSONAcceptable, processed: () -> ()) -> ()) -> (),
-	Save: (self: any) -> (),
-	SetAsync: (self: any) -> (),
-}
-
-export type VersionQuery<T> = {
-	NextAsync: (self: any) -> Profile<T>?,
-}
-
-type ProfileStoreStandard<T> = {
-	Name: string,
-	StartSessionAsync: (self: any, profile_key: string, params: { Steal: boolean? }) -> Profile<T>?,
-	MessageAsync: (self: any, profile_key: string, message: JSONAcceptable) -> boolean,
-	GetAsync: (self: any, profile_key: string, version: string?) -> Profile<T>?,
-	VersionQuery: (
-		self: any,
-		profile_key: string,
-		sort_direction: Enum.SortDirection?,
-		min_date: DateTime | number | nil,
-		max_date: DateTime | number | nil
-	) -> VersionQuery<T>,
-	RemoveAsync: (self: any, profile_key: string) -> boolean,
-}
-
-export type ProfileStore<T> = {
-	Mock: ProfileStoreStandard<T>,
-} & ProfileStoreStandard<T>
-
-export type Config<T> = {
-	template: T,
+export type Config = {
+	template: { [string]: any },
 	useMock: boolean?,
 }
 
-export type Bank<T> = typeof(setmetatable(
+export type Bank = typeof(setmetatable(
 	{} :: {
 		_name: string,
-		_template: T,
+		_template: { [string]: any },
 		_useMock: boolean?,
-		_bank: ProfileStore<any>,
+		_bank: any,
 		_vaults: { [Player]: Vault.Vault },
-
-		VaultLoaded: Signal<Player, Vault.Vault>,
+		_vaultLoaded: any,
 	},
 	Bank
 ))
 
-local banks: { [string]: Bank<any> } = {}
-local bankRegistered = Signal.new() :: Signal<string>
+const banks: { [string]: Bank } = {}
+const bankRegistered = Signal.new()
 
-function Bank.new<T>(name: string, config: Config<T>): Bank<T>
+function Bank.new(name: string, config: Config): Bank
 	assert(not banks[name], `Bank {name} already exists`)
 
-	local self = setmetatable({}, Bank) :: Bank<T>
+	local self = setmetatable({}, Bank) :: Bank
 
 	self._name = name
 	self._template = config.template
 	self._useMock = config.useMock or false
 	self._bank = ProfileStore.New(name, self._template)
 	self._vaults = {}
-
-	self.VaultLoaded = Signal.new()
+	self._vaultLoaded = Signal.new()
 
 	if self._useMock then
-		self._bank = self._bank.Mock :: ProfileStore<T>
+		self._bank = self._bank.Mock
 	end
 
-	banks[name] = self :: Bank<any>
+	banks[name] = self
 	bankRegistered:Fire(name)
 
 	for _, player in Players:GetPlayers() do
@@ -145,7 +65,7 @@ function Bank.new<T>(name: string, config: Config<T>): Bank<T>
 	return self
 end
 
-function Bank._loadVault(self: Bank<any>, player: Player): ()
+function Bank._loadVault(self: Bank, player: Player): ()
 	local profile = self._bank:StartSessionAsync(`{player.UserId}`, {
 		Cancel = function()
 			return player.Parent ~= Players
@@ -163,7 +83,7 @@ function Bank._loadVault(self: Bank<any>, player: Player): ()
 
 		if player.Parent == Players then
 			self._vaults[player] = Vault.new(profile)
-			self.VaultLoaded:Fire(player, self._vaults[player])
+			self._vaultLoaded:Fire(player, self._vaults[player])
 		else
 			profile:EndSession()
 		end
@@ -172,7 +92,7 @@ function Bank._loadVault(self: Bank<any>, player: Player): ()
 	end
 end
 
-function Bank._saveVault(self: Bank<any>, player: Player): ()
+function Bank._saveVault(self: Bank, player: Player): ()
 	local vault = self._vaults[player]
 
 	if vault then
@@ -180,18 +100,24 @@ function Bank._saveVault(self: Bank<any>, player: Player): ()
 	end
 end
 
-function Bank.getVault<T>(self: Bank<T>, player: Player): Vault.Vault
+function Bank.vaultLoaded(self: Bank, callback: (Player, Vault.Vault) -> ())
+	self._vaultLoaded:Connect(function(player, vault)
+		callback(player, vault)
+	end)
+end
+
+function Bank.getVault(self: Bank, player: Player): Vault.Vault?
 	return self._vaults[player]
 end
 
-function Bank.getBank<T>(_self: Bank<any>, name: string): Bank<T>?
+function Bank.getBank(_self: Bank, name: string): Bank?
 	if banks[name] then
 		return banks[name]
 	end
 
-	local deadline = os.clock() + 10
+	const deadline = os.clock() + 10
 	local connection = nil
-	local result = nil :: Bank<any>?
+	local result = nil :: Bank?
 
 	connection = bankRegistered:Connect(function(bank: string)
 		if bank == name then
