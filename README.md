@@ -36,11 +36,9 @@ local Players = game:GetService("Players")
 local Bank = require(path)
 
 local playerDataBank = Bank:getBank("PlayerData_v1")
-local clansDataBank = Bank:getBank("ClansData_v1")
 
-Players.PlayerAdded:Connect(function(player: Player): ()
-    local vaultA = playerDataBank:getVault(player)
-    local vaultB = clansDataBank:getVault(player)
+playerDataBank:vaultLoaded(function(player, vault)
+    print(player, vault)
 end)
 ```
 
@@ -55,6 +53,10 @@ vault:decrement("cash", 10)
 
 vault:update("cash", function(currentCash)
     return currentCash + 100
+end)
+
+vault:onLastSave(function(reason)
+    print(reason)
 end)
 ```
 
