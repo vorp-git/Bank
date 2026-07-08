@@ -97,6 +97,7 @@ function Bank._saveVault(self: Bank, player: Player): ()
 
 	if vault then
 		vault._profile:EndSession()
+		vault:destroy()
 	end
 end
 

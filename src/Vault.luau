@@ -58,4 +58,8 @@ function Vault.onLastSave(self: Vault, callback: (reason: "Manual" | "External" 
 	end)
 end
 
+function Vault.destroy(self: Vault): ()
+	self._profile = nil
+end
+
 return Vault
