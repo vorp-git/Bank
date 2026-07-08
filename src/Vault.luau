@@ -9,7 +9,7 @@ export type Vault = typeof(setmetatable(
 	Vault
 ))
 
-function Vault.new<T>(profile): Vault
+function Vault.new(profile): Vault
 	local self = setmetatable({}, Vault) :: Vault
 
 	self._profile = profile
@@ -18,11 +18,11 @@ function Vault.new<T>(profile): Vault
 end
 
 function Vault.get(self: Vault, key: string): any?
-	if self._profile.Data[key] then
-		return self._profile.Data[key]
+	if not self._profile.Data[key] then
+		return
 	end
 
-	return nil
+	return self._profile.Data[key]
 end
 
 function Vault.set(self: Vault, key: string, value: any): ()
@@ -46,6 +46,12 @@ function Vault.update(self: Vault, key: string, callback: (...number) -> number)
 	if current ~= nil then
 		self._profile.Data[key] = callback(current)
 	end
+end
+
+function Vault.onLastSave(self: Vault, callback: (reason: "Manual" | "External" | "Shutdown") -> ())
+	self._profile.OnLastSave:Connect(function(reason)
+		callback(reason)
+	end)
 end
 
 return Vault
