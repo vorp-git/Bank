@@ -31,8 +31,6 @@ Each is created once with `Bank.new(name, config)`, then retrieved anywhere by n
 ## Getting A Player's Vault
 
 ```lua
-local Players = game:GetService("Players")
-
 local Bank = require(path)
 
 local playerDataBank = Bank:getBank("PlayerData_v1")
