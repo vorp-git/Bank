@@ -2,8 +2,8 @@
 const Players = game:GetService("Players")
 const RunService = game:GetService("RunService")
 
-const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
-const Signal = require(script.Parent.Parent.Parent.Packages.Signal) :: any
+const ProfileStore = if RunService:IsServer() then require(script.Parent.ProfileStore) :: any else nil
+const Signal = require(script.Parent.Signal) :: any
 const Vault = require(script.Parent.Vault)
 
 const Bank = {}
