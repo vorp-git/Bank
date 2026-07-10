@@ -65,6 +65,34 @@ function Bank.new(name: string, config: Config): Bank
 	return self
 end
 
+function Bank.getBank(name: string): Bank?
+	if banks[name] then
+		return banks[name]
+	end
+
+	const deadline = os.clock() + 10
+	local connection = nil
+	local result = nil :: Bank?
+
+	connection = bankRegistered:Connect(function(bank: string)
+		if bank == name then
+			result = banks[name]
+		end
+	end)
+
+	while not result and os.clock() < deadline do
+		task.wait()
+	end
+
+	connection:Disconnect()
+
+	if not result then
+		warn(`Bank.getBank timed out waiting for Bank "{name}", make sure it was created and the name matches exactly.`)
+	end
+
+	return result
+end
+
 function Bank._loadVault(self: Bank, player: Player): ()
 	local profile = self._bank:StartSessionAsync(`{player.UserId}`, {
 		Cancel = function()
@@ -109,34 +137,6 @@ end
 
 function Bank.getVault(self: Bank, player: Player): Vault.Vault?
 	return self._vaults[player]
-end
-
-function Bank.getBank(_self: Bank, name: string): Bank?
-	if banks[name] then
-		return banks[name]
-	end
-
-	const deadline = os.clock() + 10
-	local connection = nil
-	local result = nil :: Bank?
-
-	connection = bankRegistered:Connect(function(bank: string)
-		if bank == name then
-			result = banks[name]
-		end
-	end)
-
-	while not result and os.clock() < deadline do
-		task.wait()
-	end
-
-	connection:Disconnect()
-
-	if not result then
-		warn(`Bank.getBank timed out waiting for Bank "{name}", make sure it was created and the name matches exactly.`)
-	end
-
-	return result
 end
 
 return Bank

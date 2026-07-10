@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.5.4"
+Bank = "vorp-git/bank@0.5.5"
 ```
 
 ## Quick Start
@@ -17,7 +17,7 @@ Bank = "vorp-git/bank@0.5.4"
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank.new("PlayerData_v1", {
+local playerDataBank = Bank.new("PlayerDataBank", {
     template = {},
     useMock = false,
 })
@@ -26,14 +26,14 @@ local playerDataBank = Bank.new("PlayerData_v1", {
 ## Multiple Banks
 
 You can create multiple independent Banks (e.g. one for player data, one for clan data).
-Each is created once with `Bank.new(name, config)`, then retrieved anywhere by name with `Bank:getBank(name)`.
+Each is created once with `Bank.new(name, config)`, then retrieved anywhere by name with `Bank.getBank(name)`.
 
 ## Getting A Player's Vault
 
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank:getBank("PlayerData_v1")
+local playerDataBank = Bank.getBank("PlayerDataBank")
 
 playerDataBank:vaultLoaded(function(player, vault)
     print(player, vault)
