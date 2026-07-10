@@ -57,6 +57,10 @@ end)
 vault:onLastSave(function(reason)
     print(reason)
 end)
+
+vault:onChanged(function(key, value)
+    print(key, value)
+end)
 ```
 
 ## Scope
