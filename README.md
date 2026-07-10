@@ -68,6 +68,50 @@ end)
 Bank is server-only. It does not replicate data to the client automatically.
 If you need client-side access to player data, you'll need to build your own replication layer (e.g. RemoteEvents, or a library like Blink).
 
+## Quick Example Using Blink
+
+```lua
+local Bank = require(path)
+local ServerNetwork = require(path)
+
+local playerDataBank = Bank.new("PlayerDataBank", {
+	template = {
+        cash = 0,
+    }
+})
+
+playerDataBank:vaultLoaded(function(player, vault)
+	ServerNetwork.DataLoaded.Fire(player, vault:getData())
+
+	vault:onChanged(function(key, value)
+		ServerNetwork.DataPatched.Fire(player, { key = key, value = value })
+	end)
+end)
+```
+
+```blink
+struct PlayerData {
+    cash: u32,
+}
+
+event DataLoaded {
+    from: Server,
+    type: Reliable,
+    call: SingleAsync,
+    data: PlayerData,
+}
+
+event DataPatched {
+    from: Server,
+    type: Reliable,
+    call: SingleAsync,
+    data: struct {
+        key: string,
+        value: unknown,
+    }
+}
+```
+
 ## Roadmap
 
 - [ ] Global leaderboard support (via OrderedDataStore)
