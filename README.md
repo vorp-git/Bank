@@ -1,4 +1,4 @@
-# NOTICE: Bank is still under development and should not be used as of now.
+# NOTICE: Bank is still under development, changes are expected.
 
 # Bank
 
@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.5.6"
+Bank = "vorp-git/bank@0.5.7"
 ```
 
 ## Quick Start
