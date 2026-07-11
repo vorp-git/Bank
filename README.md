@@ -1,4 +1,4 @@
-# NOTICE: Bank is still under development, changes are expected.
+# NOTICE: Bank is under active development. Missing features and breaking changes are expected. Please open an issue if something you need isn't there yet.
 
 # Bank
 
