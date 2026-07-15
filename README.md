@@ -23,6 +23,23 @@ local playerDataBank = Bank.new("PlayerDataBank", {
 })
 ```
 
+## Leaderstats
+
+You can easily pick what data you want to be displayed on the Player List (the leaderboard shown in the top-right corner of the screen):
+
+```lua
+local Bank = require(path)
+
+local playerDataBank = Bank.new("PlayerDataBank", {
+    template = {
+        cash = 0,
+    },
+    leaderboards = {
+        cash = true,
+    }
+})
+```
+
 ## Multiple Banks
 
 You can create multiple independent Banks (e.g. one for player data, one for clan data).
