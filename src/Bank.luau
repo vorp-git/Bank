@@ -11,6 +11,7 @@ Bank.__index = Bank
 
 export type Config = {
 	template: { [string]: any },
+	leaderboards: { [string]: boolean }?,
 	useMock: boolean?,
 }
 
@@ -18,6 +19,7 @@ export type Bank = typeof(setmetatable(
 	{} :: {
 		_name: string,
 		_template: { [string]: any },
+		_leaderboards: { [string]: boolean }?,
 		_useMock: boolean?,
 		_bank: any,
 		_vaults: { [Player]: Vault.Vault },
@@ -36,6 +38,7 @@ function Bank.new(name: string, config: Config): Bank
 
 	self._name = name
 	self._template = config.template
+	self._leaderboards = config.leaderboards or nil
 	self._useMock = config.useMock or false
 	self._bank = ProfileStore.New(name, self._template)
 	self._vaults = {}
@@ -112,12 +115,49 @@ function Bank._loadVault(self: Bank, player: Player): ()
 		if player.Parent == Players then
 			self._vaults[player] = Vault.new(profile)
 			self._vaultLoaded:Fire(player, self._vaults[player])
+			self:_createLeaderstats(player, profile)
 		else
 			profile:EndSession()
 		end
 	else
 		player:Kick("Data load fail - Please rejoin")
 	end
+end
+
+function Bank._createLeaderstats(self: Bank, player: Player, profile): ()
+	if not self._leaderboards then
+		return
+	end
+
+	const leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+
+	for field, enabled in self._leaderboards do
+		if not enabled then
+			continue
+		end
+
+		if typeof(self._template[field]) == "number" then
+			const val = Instance.new("NumberValue")
+			val.Name = field
+			val.Value = profile.Data[field]
+			val.Parent = leaderstats
+		elseif typeof(self._template[field]) == "string" then
+			const val = Instance.new("StringValue")
+			val.Name = field
+			val.Value = profile.Data[field]
+			val.Parent = leaderstats
+		end
+	end
+
+	self._vaults[player]:onChanged(function(key, value)
+		for _, z: any in leaderstats:GetChildren() do
+			if z.Name == key then
+				z.Value = value
+			end
+		end
+	end)
 end
 
 function Bank._saveVault(self: Bank, player: Player): ()
