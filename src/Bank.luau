@@ -1,4 +1,3 @@
---!strict
 const Players = game:GetService("Players")
 const RunService = game:GetService("RunService")
 
@@ -11,7 +10,7 @@ Bank.__index = Bank
 
 export type Config = {
 	template: { [string]: any },
-	leaderboards: { [string]: boolean }?,
+	leaderboards: { string }?,
 	useMock: boolean?,
 }
 
@@ -19,7 +18,7 @@ export type Bank = typeof(setmetatable(
 	{} :: {
 		_name: string,
 		_template: { [string]: any },
-		_leaderboards: { [string]: boolean }?,
+		_leaderboards: { string }?,
 		_useMock: boolean?,
 		_bank: any,
 		_vaults: { [Player]: Vault.Vault },
@@ -133,20 +132,16 @@ function Bank._createLeaderstats(self: Bank, player: Player, profile): ()
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
 
-	for field, enabled in self._leaderboards do
-		if not enabled then
-			continue
-		end
-
-		if typeof(self._template[field]) == "number" then
+	for _, stat in self._leaderboards do
+		if typeof(self._template[stat]) == "number" then
 			const val = Instance.new("NumberValue")
-			val.Name = field
-			val.Value = profile.Data[field]
+			val.Name = stat
+			val.Value = profile.Data[stat]
 			val.Parent = leaderstats
-		elseif typeof(self._template[field]) == "string" then
+		elseif typeof(self._template[stat]) == "string" then
 			const val = Instance.new("StringValue")
-			val.Name = field
-			val.Value = profile.Data[field]
+			val.Name = stat
+			val.Value = profile.Data[stat]
 			val.Parent = leaderstats
 		end
 	end

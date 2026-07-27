@@ -34,9 +34,7 @@ local playerDataBank = Bank.new("PlayerDataBank", {
     template = {
         cash = 0,
     },
-    leaderboards = {
-        cash = true,
-    }
+    leaderboards = { "cash" }
 })
 ```
 
