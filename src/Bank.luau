@@ -1,152 +1,155 @@
+--!strict
 const Players = game:GetService("Players")
 const RunService = game:GetService("RunService")
 
-const ProfileStore = if RunService:IsServer() then require(script.Parent.Parent.ProfileStore) :: any else nil
-const Signal = require(script.Parent.Parent.Signal) :: any
-const Vault = require(script.Parent.Vault)
+const dependencies = script.Parent.Parent :: Folder
 
-const Bank = {}
-Bank.__index = Bank
+const Signal = require(dependencies:FindFirstChild("Signal")) :: any
+const ProfileStore = if RunService:IsServer() then require(dependencies:FindFirstChild("ProfileStore")) :: any else nil
+const Janitor = require(dependencies:FindFirstChild("Janitor")) :: any
 
 export type Config = {
 	template: { [string]: any },
-	leaderboards: { string }?,
 	useMock: boolean?,
+	leaderstats: { string }?,
 }
 
-export type Bank = typeof(setmetatable(
-	{} :: {
-		_name: string,
-		_template: { [string]: any },
-		_leaderboards: { string }?,
-		_useMock: boolean?,
-		_bank: any,
-		_vaults: { [Player]: Vault.Vault },
-		_vaultLoaded: any,
-	},
-	Bank
-))
+export type BankAPI = {
+	vaultLoaded: (callback: (player: Player, vault: VaultAPI) -> ()) -> (),
+	getVault: (player: Player) -> VaultAPI,
+}
 
-const banks: { [string]: Bank } = {}
-const bankRegistered = Signal.new()
+export type Bank = {
+	create: (name: string, config: Config) -> BankAPI,
+}
 
-function Bank.new(name: string, config: Config): Bank
-	assert(not banks[name], `Bank {name} already exists`)
+export type State = {
+	store: any,
+	vaultLoadedSignal: any,
+	profiles: { [Player]: VaultAPI },
+	leaderstats: { string },
+	template: { [string]: any },
+}
 
-	local self = setmetatable({}, Bank) :: Bank
+export type VaultAPI = {
+	get: (key: string?) -> any,
+	set: (key: string, value: any) -> (),
+	increment: (key: string, amount: number) -> (),
+	decrement: (key: string, amount: number) -> (),
+	update: (key: string, callback: (number) -> number) -> (),
+	onChanged: (callback: (key: string, value: any) -> ()) -> (),
+	onLastSave: (callback: (reason: "Manual" | "External" | "Shutdown") -> ()) -> (),
+	destroy: () -> (),
+	profile: any,
+}
 
-	self._name = name
-	self._template = config.template
-	self._leaderboards = config.leaderboards or nil
-	self._useMock = config.useMock or false
-	self._bank = ProfileStore.New(name, self._template)
-	self._vaults = {}
-	self._vaultLoaded = Signal.new()
+const function createVault(profile): VaultAPI
+	const janitor = Janitor.new()
+	const changedSignal = Signal.new()
+	const data = profile.Data
 
-	if self._useMock then
-		self._bank = self._bank.Mock
+	janitor:Add(changedSignal)
+
+	const function get(key: string?): any
+		if not key then
+			return data
+		end
+
+		return data[key]
 	end
 
-	banks[name] = self
-	bankRegistered:Fire(name)
+	const function update(key: string, callback: (number) -> number): ()
+		const new = callback(data[key])
+		data[key] = new
+		changedSignal:Fire(key, new)
+	end
 
-	for _, player in Players:GetPlayers() do
-		task.spawn(function()
-			self:_loadVault(player)
+	const function set(key: string, value: any): ()
+		update(key, function()
+			return value
 		end)
 	end
 
-	Players.PlayerAdded:Connect(function(player: Player): ()
-		self:_loadVault(player)
-	end)
+	const function increment(key: string, amount: number): ()
+		update(key, function(prev)
+			return prev + amount
+		end)
+	end
 
-	Players.PlayerRemoving:Connect(function(player: Player): ()
-		self:_saveVault(player)
-	end)
+	const function decrement(key: string, amount: number): ()
+		increment(key, -amount)
+	end
 
-	return self
+	const function onChanged(callback: (key: string, value: any) -> ())
+		janitor:Add(changedSignal:Connect(callback))
+	end
+
+	const function destroy()
+		janitor:Destroy()
+	end
+
+	const function onLastSave(callback: (reason: "Manual" | "External" | "Shutdown") -> ()): ()
+		janitor:Add(profile.OnLastSave:Connect(callback))
+	end
+
+	return {
+		get = get,
+		set = set,
+		increment = increment,
+		decrement = decrement,
+		update = update,
+		onChanged = onChanged,
+		onLastSave = onLastSave,
+		destroy = destroy,
+		profile = profile,
+	}
 end
 
-function Bank.getBank(name: string): Bank?
-	if banks[name] then
-		return banks[name]
-	end
-
-	const deadline = os.clock() + 10
-	local connection = nil
-	local result = nil :: Bank?
-
-	connection = bankRegistered:Connect(function(bank: string)
-		if bank == name then
-			result = banks[name]
-		end
-	end)
-
-	while not result and os.clock() < deadline do
-		task.wait()
-	end
-
-	connection:Disconnect()
-
-	if not result then
-		warn(`Bank.getBank timed out waiting for Bank "{name}", make sure it was created and the name matches exactly.`)
-	end
-
-	return result
-end
-
-function Bank._loadVault(self: Bank, player: Player): ()
-	local profile = self._bank:StartSessionAsync(`{player.UserId}`, {
+const function sessionOptions(player: Player)
+	return {
 		Cancel = function()
 			return player.Parent ~= Players
 		end,
-	})
-
-	if profile then
-		profile:AddUserId(player.UserId)
-		profile:Reconcile()
-
-		profile.OnSessionEnd:Connect(function()
-			self._vaults[player] = nil
-			player:Kick("Data session end - Please rejoin")
-		end)
-
-		if player.Parent == Players then
-			self._vaults[player] = Vault.new(profile)
-			self._vaultLoaded:Fire(player, self._vaults[player])
-			self:_createLeaderstats(player, profile)
-		else
-			profile:EndSession()
-		end
-	else
-		player:Kick("Data load fail - Please rejoin")
-	end
+	}
 end
 
-function Bank._createLeaderstats(self: Bank, player: Player, profile): ()
-	if not self._leaderboards then
-		return
-	end
+const function acquireProfile(state: State, player: Player)
+	return state.store:StartSessionAsync(`{player.UserId}`, sessionOptions(player))
+end
 
+const function initializeProfile(profile, player: Player)
+	profile:AddUserId(player.UserId)
+	profile:Reconcile()
+end
+
+const function connectSessionEnd(profile, state: State, player: Player): ()
+	profile.OnSessionEnd:Connect(function()
+		state.profiles[player].destroy()
+		state.profiles[player] = nil
+		player:Kick("Data session end - Please rejoin")
+	end)
+end
+
+const function createLeaderstats(state: State, player: Player)
 	const leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
 
-	for _, stat in self._leaderboards do
-		if typeof(self._template[stat]) == "number" then
+	for _, stat in state.leaderstats do
+		if typeof(state.template[stat]) == "number" then
 			const val = Instance.new("NumberValue")
 			val.Name = stat
-			val.Value = profile.Data[stat]
+			val.Value = state.profiles[player].get(stat)
 			val.Parent = leaderstats
-		elseif typeof(self._template[stat]) == "string" then
+		elseif typeof(state.template[stat]) == "string" then
 			const val = Instance.new("StringValue")
 			val.Name = stat
-			val.Value = profile.Data[stat]
+			val.Value = state.profiles[player].get(stat)
 			val.Parent = leaderstats
 		end
 	end
 
-	self._vaults[player]:onChanged(function(key, value)
+	state.profiles[player].onChanged(function(key, value)
 		for _, z: any in leaderstats:GetChildren() do
 			if z.Name == key then
 				z.Value = value
@@ -155,23 +158,76 @@ function Bank._createLeaderstats(self: Bank, player: Player, profile): ()
 	end)
 end
 
-function Bank._saveVault(self: Bank, player: Player): ()
-	local vault = self._vaults[player]
+const function load(state: State, player: Player): ()
+	const profile = acquireProfile(state, player)
 
-	if vault then
-		vault._profile:EndSession()
-		vault:destroy()
+	if not profile then
+		player:Kick("Data load fail - Please rejoin")
+		return
+	end
+
+	initializeProfile(profile, player)
+	connectSessionEnd(profile, state, player)
+
+	if player.Parent ~= Players then
+		profile:EndSession()
+		return
+	end
+
+	state.profiles[player] = createVault(profile)
+	state.vaultLoadedSignal:Fire(player, state.profiles[player])
+
+	if state.leaderstats then
+		createLeaderstats(state, player)
 	end
 end
 
-function Bank.vaultLoaded(self: Bank, callback: (Player, Vault.Vault) -> ())
-	self._vaultLoaded:Connect(function(player, vault)
-		callback(player, vault)
-	end)
+const function save(state: State, player: Player): ()
+	const profile = state.profiles[player].profile
+	if profile then
+		profile:EndSession()
+	end
 end
 
-function Bank.getVault(self: Bank, player: Player): Vault.Vault?
-	return self._vaults[player]
+const Bank = {} :: Bank
+
+function Bank.create(name: string, config: Config): BankAPI
+	const template = config.template
+	const useMock = config.useMock or false
+	const state: State = {
+		template = template,
+		store = ProfileStore.New(name, template),
+		vaultLoadedSignal = Signal.new(),
+		profiles = {},
+		leaderstats = config.leaderstats or {},
+	}
+
+	if useMock then
+		warn(`Mock enabled for Bank {name}`)
+		state.store = state.store.Mock
+	end
+
+	for _, player in Players:GetPlayers() do
+		task.spawn(load, state, player)
+	end
+
+	Players.PlayerAdded:Connect(function(player: Player): ()
+		load(state, player)
+	end)
+
+	Players.PlayerRemoving:Connect(function(player: Player): ()
+		save(state, player)
+	end)
+
+	return {
+		vaultLoaded = function(callback: (player: Player, vault: VaultAPI) -> ())
+			state.vaultLoadedSignal:Connect(callback)
+		end,
+
+		getVault = function(player: Player)
+			return state.profiles[player]
+		end,
+	}
 end
 
 return Bank
