@@ -3,6 +3,21 @@
 registry = "test"
 
 [[package]]
+name = "evaera/promise"
+version = "4.0.0"
+dependencies = []
+
+[[package]]
+name = "howmanysmall/janitor"
+version = "1.18.3"
+dependencies = [["Promise", "howmanysmall/typed-promise@4.0.6"]]
+
+[[package]]
+name = "howmanysmall/typed-promise"
+version = "4.0.6"
+dependencies = [["Promise", "evaera/promise@4.0.0"]]
+
+[[package]]
 name = "lm-loleris/profilestore"
 version = "1.0.3"
 dependencies = []
@@ -14,5 +29,5 @@ dependencies = []
 
 [[package]]
 name = "vorp-git/bank"
-version = "0.4.0"
-dependencies = [["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "lm-loleris/profilestore@1.0.3"]]
+version = "0.5.9"
+dependencies = [["Janitor", "howmanysmall/janitor@1.18.3"], ["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "lm-loleris/profilestore@1.0.3"]]

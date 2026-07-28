@@ -10,6 +10,7 @@ include = ["src", "src/*", "default.project.json", "wally.lock", "wally.toml", "
 
 [dependencies]
 Signal = "sleitnick/signal@2.0.3"
+Janitor = "howmanysmall/janitor@1.18.3"
 
 [server-dependencies]
 ProfileStore = "lm-loleris/profilestore@1.0.3"
