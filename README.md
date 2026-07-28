@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.5.9"
+Bank = "vorp-git/bank@0.6.0"
 ```
 
 ## Quick Start
@@ -17,7 +17,7 @@ Bank = "vorp-git/bank@0.5.9"
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank.new("PlayerDataBank", {
+local playerDataBank = Bank.create("PlayerDataBank", {
     template = {},
     useMock = false,
 })
@@ -30,50 +30,52 @@ You can easily pick what data you want to be displayed on the Player List (the l
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank.new("PlayerDataBank", {
+local playerDataBank = Bank.create("PlayerDataBank", {
     template = {
         cash = 0,
     },
-    leaderboards = { "cash" }
+    leaderstats = { "cash" }
 })
 ```
-
-## Multiple Banks
-
-You can create multiple independent Banks (e.g. one for player data, one for clan data).
-Each is created once with `Bank.new(name, config)`, then retrieved anywhere by name with `Bank.getBank(name)`.
 
 ## Getting A Player's Vault
 
 ```lua
+local Players = game:GetService("Players")
 local Bank = require(path)
 
-local playerDataBank = Bank.getBank("PlayerDataBank")
+local playerDataBank = Bank.create("PlayerDataBank", {
+    template = {},
+})
 
-playerDataBank:vaultLoaded(function(player, vault)
+playerDataBank.vaultLoaded(function(player, vault)
     print(player, vault)
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    local vault = playerDataBank.getVault(player)
 end)
 ```
 
 ## Using A Vault
 
 ```lua
-vault:getData()
-vault:get("cash")
-vault:set("cash", 100)
+vault.get()
+vault.get("cash")
+vault.set("cash", 100)
 
-vault:increment("cash", 10)
-vault:decrement("cash", 10)
+vault.increment("cash", 10)
+vault.decrement("cash", 50)
 
-vault:update("cash", function(currentCash)
-    return currentCash + 100
+vault.update("cash", function(prev)
+    return prev + 100
 end)
 
-vault:onLastSave(function(reason)
+vault.onLastSave(function(reason)
     print(reason)
 end)
 
-vault:onChanged(function(key, value)
+vault.onChanged(function(key, value)
     print(key, value)
 end)
 ```
@@ -82,50 +84,6 @@ end)
 
 Bank is server-only. It does not replicate data to the client automatically.
 If you need client-side access to player data, you'll need to build your own replication layer (e.g. RemoteEvents, or a library like Blink).
-
-## Quick Example Using Blink
-
-```lua
-local Bank = require(path)
-local ServerNetwork = require(path)
-
-local playerDataBank = Bank.new("PlayerDataBank", {
-	template = {
-        cash = 0,
-    }
-})
-
-playerDataBank:vaultLoaded(function(player, vault)
-	ServerNetwork.DataLoaded.Fire(player, vault:getData())
-
-	vault:onChanged(function(key, value)
-		ServerNetwork.DataPatched.Fire(player, { key = key, value = value })
-	end)
-end)
-```
-
-```blink
-struct PlayerData {
-    cash: u32,
-}
-
-event DataLoaded {
-    from: Server,
-    type: Reliable,
-    call: SingleAsync,
-    data: PlayerData,
-}
-
-event DataPatched {
-    from: Server,
-    type: Reliable,
-    call: SingleAsync,
-    data: struct {
-        key: string,
-        value: unknown,
-    }
-}
-```
 
 ## Roadmap
 
