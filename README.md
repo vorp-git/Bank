@@ -1,4 +1,4 @@
-# NOTICE: Bank is under active development. Missing features and breaking changes are expected. Please open an issue if something you need isn't there yet.
+# Bank is actively maintained. New features and improvements will be added over time. If you find any bugs or have suggestions, feel free to open an issue.
 
 # Bank
 
@@ -9,7 +9,7 @@ A Bank/Vault data management library built on ProfileStore
 Add to your `wally.toml`: under `[server-dependencies]`
 
 ```toml
-Bank = "vorp-git/bank@0.6.0"
+Bank = "vorp-git/bank@1.0.0"
 ```
 
 ## Quick Start
@@ -17,7 +17,7 @@ Bank = "vorp-git/bank@0.6.0"
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank.create("PlayerDataBank", {
+local playerDataBank = Bank.new("PlayerDataBank", {
     template = {},
     useMock = false,
 })
@@ -30,7 +30,7 @@ You can easily pick what data you want to be displayed on the Player List (the l
 ```lua
 local Bank = require(path)
 
-local playerDataBank = Bank.create("PlayerDataBank", {
+local playerDataBank = Bank.new("PlayerDataBank", {
     template = {
         cash = 0,
     },
@@ -44,38 +44,39 @@ local playerDataBank = Bank.create("PlayerDataBank", {
 local Players = game:GetService("Players")
 local Bank = require(path)
 
-local playerDataBank = Bank.create("PlayerDataBank", {
+local playerDataBank = Bank.new("PlayerDataBank", {
     template = {},
 })
 
-playerDataBank.vaultLoaded(function(player, vault)
+playerDataBank:vaultLoaded(function(player, vault)
     print(player, vault)
 end)
 
 Players.PlayerAdded:Connect(function(player)
-    local vault = playerDataBank.getVault(player)
+    local vault = playerDataBank:getVault(player)
 end)
 ```
 
 ## Using A Vault
 
 ```lua
-vault.get()
-vault.get("cash")
-vault.set("cash", 100)
+vault:get("cash")
+vault:set("cash", 100)
 
-vault.increment("cash", 10)
-vault.decrement("cash", 50)
+vault:increment("cash", 10)
+vault:decrement("cash", 50)
 
-vault.update("cash", function(prev)
+vault:set({"inventory", "maxSlots"}, 50)
+
+vault:update("cash", function(prev)
     return prev + 100
 end)
 
-vault.onLastSave(function(reason)
+vault:onLastSave(function(reason)
     print(reason)
 end)
 
-vault.onChanged(function(key, value)
+vault:onChanged(function(key, value)
     print(key, value)
 end)
 ```
