@@ -1,5 +1,7 @@
 --!strict
 const dependencies = script.Parent.Parent :: Folder
+const deepClone = require(script.Parent.utils.deepClone)
+const deepFreeze = require(script.Parent.utils.deepFreeze)
 const Signal = require(dependencies:FindFirstChild("Signal")) :: any
 const Janitor = require(dependencies:FindFirstChild("Janitor")) :: any
 
@@ -16,6 +18,17 @@ export type Vault = typeof(setmetatable(
 	Vault
 ))
 
+const function cloneAndFreeze(target: { any }): any
+	if type(target) ~= "table" then
+		return target
+	end
+
+	const clone = deepClone(target)
+	deepFreeze(clone)
+
+	return clone
+end
+
 function Vault.new(profile: any): Vault
 	const self = setmetatable({}, Vault) :: Vault
 
@@ -27,18 +40,22 @@ function Vault.new(profile: any): Vault
 	return self
 end
 
-function Vault.get(self: Vault, key: string | { string }): any
+function Vault.get(self: Vault, key: string | { string }?): any
 	if typeof(key) == "table" then
 		local current = self._data
 
-		for i = 1, #key - 1 do
+		for i = 1, #key do
 			current = current[key[i]]
 		end
 
-		return current
+		return cloneAndFreeze(current)
 	end
 
-	return self._data[key]
+	if not key then
+		return cloneAndFreeze(self._data)
+	end
+
+	return cloneAndFreeze(self._data[key])
 end
 
 function Vault.set(self: Vault, key: string | { string }, value: any): ()
