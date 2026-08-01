@@ -3,11 +3,9 @@ const function deepClone(original: { any })
 	const clone = table.clone(original)
 
 	for key, value in original do
-		if type(key) ~= "table" then
-			continue
+		if type(value) == "table" then
+			clone[key] = deepClone(value)
 		end
-
-		clone[key] = deepClone(value)
 	end
 
 	return clone
